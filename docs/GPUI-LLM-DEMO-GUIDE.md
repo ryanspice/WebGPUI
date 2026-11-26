@@ -696,6 +696,13 @@ P0 demo from painting and responding.
   Receipt: `B:\AI-Wiki.runtime\artifact-lifecycle\gpui\deploy-receipt-20261126-070255.md`.
   The new game HUD demo is at
   `https://ryanspice.com/dev/gpui/examples/game/`.
+- Published v0.2.0: 2026-11-26T07:40:35-05:00 (tag `20261126-074035`), rebuilt
+  from this repository's `main` after PR #1 was merged. Live manifest reports
+  `version: 0.2.0`, `framework: svelte`, wasm
+  `gpui_core_bg-B3D9lpTy.wasm`. All endpoints returned correct MIME/CORS,
+  missing asset 404, and both demos painted and responded with zero page
+  errors. Receipt:
+  `B:\AI-Wiki.runtime\artifact-lifecycle\gpui\deploy-receipt-20261126-074035.md`.
 - Guide version: 1.0 (draft integrating reviews).
 - Built/verified: 2026-11-26T00:39:30-05:00.
 - Agent: OpenCode harness (T3 Code), model `opencode/hy4-flash-free`.
