@@ -17,7 +17,7 @@ EXPECTED_EXPORTS = ['mount', 'ui', 'initGpuiWeb', 'resetRender', 'version']
 
 class GpuiPublicContractTests(unittest.TestCase):
     def test_manifest_lists_verified_exports(self):
-        self.assertEqual(MANIFEST['version'], '0.3.0')
+        self.assertEqual(MANIFEST['version'], '0.3.1')
         self.assertEqual(MANIFEST['module'], './gpui.mjs')
         self.assertEqual(MANIFEST['sharedMemoryRequired'], False)
         self.assertEqual(MANIFEST['framework'], 'svelte')
@@ -32,7 +32,7 @@ class GpuiPublicContractTests(unittest.TestCase):
 
     def test_counter_imports_absolute_sdk_path(self):
         demo = (PUBLIC / 'examples' / 'counter' / 'demo.mjs').read_text(encoding='utf-8')
-        self.assertIn("import('../../v1/gpui.mjs?v=0.3.0')", demo)
+        self.assertIn("import('../../v1/gpui.mjs?v=0.3.1')", demo)
         self.assertIn('mount(', demo)
         self.assertIn('ui.column', demo)
         self.assertIn('ui.input', demo)
@@ -51,7 +51,7 @@ class GpuiPublicContractTests(unittest.TestCase):
 
     def test_llms_guide_uses_absolute_import_example(self):
         guide = (PUBLIC / 'llms.txt').read_text(encoding='utf-8')
-        self.assertIn('https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.3.0', guide)
+        self.assertIn('https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.3.1', guide)
         self.assertIn('ui.button', guide)
         self.assertIn('WebGPU', guide)
         self.assertIn('Svelte', guide)
@@ -98,11 +98,26 @@ class GpuiPublicContractTests(unittest.TestCase):
         game = PUBLIC / 'examples' / 'game'
         self.assertTrue((game / 'index.html').is_file())
         demo = (game / 'demo.mjs').read_text(encoding='utf-8')
-        self.assertIn("import('../../v1/gpui.mjs?v=0.3.0')", demo)
+        self.assertIn("import('../../v1/gpui.mjs?v=0.3.1')", demo)
         self.assertIn('ui.column', demo)
         self.assertIn('Score: ', demo)
         self.assertIn('getPaintedText', demo)
         self.assertIn('simulateClick', demo)
+
+    def test_compare_and_stats_pages_are_shipped(self):
+        compare = PUBLIC / 'examples' / 'compare' / 'index.html'
+        stats = PUBLIC / 'examples' / 'stats' / 'index.html'
+        self.assertTrue(compare.is_file())
+        self.assertTrue(stats.is_file())
+        c = compare.read_text(encoding='utf-8')
+        s = stats.read_text(encoding='utf-8')
+        self.assertIn("import('../../v1/gpui.mjs?v=0.3.1')", c)
+        self.assertIn('tabHtml', c)
+        self.assertIn('getPaintedText', s)
+        self.assertIn('getAutomationTree', s)
+        landing = (PUBLIC / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('./examples/compare/', landing)
+        self.assertIn('./examples/stats/', landing)
 
     def test_build_applies_upstream_adapter_patch(self):
         patch = ROOT / 'gpui-sites' / 'patches' / 'upstream-host-and-compiler.patch'

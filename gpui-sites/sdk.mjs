@@ -7,7 +7,7 @@ import { render, resetRender as nativeResetRender, initGpuiWeb } from '@gpui-nat
 import Host from './Host.svelte';
 
 export { initGpuiWeb };
-export const version = '0.3.0';
+export const version = '0.3.1';
 
 let mounted = false;
 

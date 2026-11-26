@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>WebGPUI · GPUI vs HTML</title>
+  <meta name="robots" content="noindex,follow">
+  <style>
+    :root{color-scheme:dark}
+    *{box-sizing:border-box}
+    body{margin:0;background:#0b0f17;color:#e2e8f0;font:15px/1.5 system-ui,sans-serif}
+    header{padding:18px 24px;border-bottom:1px solid #1f2937;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+    h1{font-size:17px;margin:0;font-weight:650}
+    .tabs{display:flex;gap:8px}
+    button{font:inherit;color:#e2e8f0;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 14px;cursor:pointer}
+    button[aria-pressed="true"]{background:#0284c7;border-color:#38bdf8}
+    a{color:#89b4ff}
+    .tag{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af}
+    main{padding:20px 24px}
+    .panel{display:none}
+    .panel[data-active="true"]{display:block}
+    #gpuiPanel canvas{display:block;width:100%;height:520px}
+    .hud{width:min(540px,100%);background:#111827;border:1px solid #1f2937;border-radius:14px;padding:28px;display:flex;flex-direction:column;gap:18px}
+    .eyebrow{color:#38bdf8;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+    .title{font-size:20px;font-weight:700}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .btn{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;cursor:pointer;color:#e2e8f0}
+    .btn.primary{background:#0284c7;border-color:#38bdf8;min-width:56px;text-align:center}
+    .field{background:#0b1120;border:1px solid #263244;border-radius:8px;padding:10px 12px;color:#f1f5f9;font-size:15px;width:100%}
+    .value{font-size:30px;font-weight:700}
+    .note{color:#9ca3af;font-size:13px;margin-top:14px}
+  </style>
+</head>
+<body>
+<header>
+  <h1>GPUI vs HTML</h1>
+  <div class="tabs" role="group" aria-label="Renderer">
+    <button id="tabGpui" aria-pressed="true">GPUI · WebGL2</button>
+    <button id="tabHtml" aria-pressed="false">HTML / CSS</button>
+  </div>
+  <span class="tag">WebGPUI build v0.3.1</span>
+  <a href="../stats/">Measured stats →</a>
+  <a href="../../">SDK home</a>
+</header>
+<main>
+  <section id="gpuiPanel" class="panel" data-active="true">
+    <p class="note">A genuine GPUI canvas rendered through WASM + WebGL2. No DOM widgets.</p>
+  </section>
+  <section id="htmlPanel" class="panel" data-active="false">
+    <div class="hud" id="htmlHud">
+      <div>
+        <div class="eyebrow">GPUI / WEBASSEMBLY · SVELTE 5</div>
+        <div class="title">Native Counter HUD</div>
+      </div>
+      <input class="field" id="htmlName" value="World" placeholder="Enter your name" aria-label="Player name">
+      <div>Hello, <span id="htmlHello">World</span></div>
+      <div class="eyebrow">Counter telemetry</div>
+      <div class="value" id="htmlCount">Count: 0</div>
+      <div class="row">
+        <button class="btn" id="htmlMinus">−</button>
+        <button class="btn primary" id="htmlPlus">+</button>
+        <button class="btn" id="htmlReset">Reset</button>
+      </div>
+      <div class="note">Plain HTML/CSS/DOM rendering of the same HUD.</div>
+    </div>
+  </section>
+</main>
+<script type="module">
+  const gpuiPanel = document.querySelector('#gpuiPanel');
+  const htmlPanel = document.querySelector('#htmlPanel');
+  const tabGpui = document.querySelector('#tabGpui');
+  const tabHtml = document.querySelector('#tabHtml');
+  const setMode = (mode) => {
+    const gpui = mode === 'gpui';
+    gpuiPanel.dataset.active = String(gpui);
+    htmlPanel.dataset.active = String(!gpui);
+    tabGpui.setAttribute('aria-pressed', String(gpui));
+    tabHtml.setAttribute('aria-pressed', String(!gpui));
+  };
+  tabGpui.addEventListener('click', () => setMode('gpui'));
+  tabHtml.addEventListener('click', () => setMode('html'));
+
+  // HTML replica state (interactive, for a fair comparison).
+  let count = 0;
+  const nameInput = document.querySelector('#htmlName');
+  const render = () => {
+    document.querySelector('#htmlCount').textContent = 'Count: ' + count;
+    document.querySelector('#htmlHello').textContent = nameInput.value || 'World';
+  };
+  document.querySelector('#htmlPlus').addEventListener('click', () => { count++; render(); });
+  document.querySelector('#htmlMinus').addEventListener('click', () => { count--; render(); });
+  document.querySelector('#htmlReset').addEventListener('click', () => { count = 0; render(); });
+  nameInput.addEventListener('input', render);
+  render();
+
+  try {
+    const { mount, ui } = await import('../../v1/gpui.mjs?v=0.3.1');
+    window.__root = await mount({
+      title: 'WebGPUI compare', width: 540, height: 560,
+      initialState: { count: 0, name: 'World' },
+      view: (state, update) => ui.column({
+        style: { width: '100%', height: '100%', padding: 28, gap: 16, background: '#111827' }
+      }, [
+        ui.text('GPUI / WEBASSEMBLY · SVELTE 5'),
+        ui.text('Native Counter HUD'),
+        ui.input({ value: state.name, placeholder: 'Enter your name', onChange: e => update({ name: e.value ?? '' }) }),
+        ui.text('Count: ' + state.count),
+        ui.row({ style: { gap: 12 } }, [
+          ui.button('−', () => update({ count: state.count - 1 })),
+          ui.button('+', () => update({ count: state.count + 1 })),
+          ui.button('Reset', () => update({ count: 0 }))
+        ])
+      ])
+    });
+    // The engine appends its canvas to document.body; move it into the panel
+    // so the renderer toggle can actually show/hide it.
+    const canvas = document.querySelector('canvas');
+    if (canvas) gpuiPanel.appendChild(canvas);
+  } catch (error) {
+    gpuiPanel.textContent = 'GPUI initialization failed: ' + (error?.message ?? String(error));
+    console.error(error);
+  }
+</script>
+</body>
+</html>

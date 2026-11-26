@@ -1,4 +1,4 @@
-# WebGPUI v0.3.0 (Svelte-first)
+# WebGPUI v0.3.1 (Svelte-first)
 
 A versioned ES module over the real upstream GPUI Native **Svelte 5** / WebAssembly
 browser renderer, hosted at `https://ryanspice.com/dev/gpui/`. Import one URL and
@@ -10,7 +10,7 @@ HTML/CSS imitation. The SDK dependency graph contains **zero React**.
 
 ```html
 <script type="module">
-  import { mount, ui } from 'https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.3.0';
+  import { mount, ui } from 'https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.3.1';
 
   await mount({
     initialState: { count: 0 },
@@ -39,7 +39,7 @@ HTML/CSS imitation. The SDK dependency graph contains **zero React**.
   `onChange: event => ... event.value`.
 - `initGpuiWeb()` — load the WASM module manually (await before `render`).
 - `resetRender()` — tear down the current window.
-- `version` — `'0.3.0'`.
+- `version` — `'0.3.1'`.
 
 ## P1: Native Svelte source demos
 
@@ -52,7 +52,7 @@ modules, then import the precompiled module from a standalone HTML page. See
 ## Rules
 
 - One `mount()` per standalone demo document (the SDK now enforces this).
-  Requires WebGL2 (the default backend since v0.3.0); mount fails explicitly if
+  Requires WebGL2 (the default backend since v0.3.1); mount fails explicitly if
   WebGL2 is unavailable.
 - Styles and events are GPUI's types, not DOM CSS or DOM events.
 - Requires WebGL2 + WebAssembly. Single-threaded; no cross-origin isolation
