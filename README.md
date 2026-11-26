@@ -30,6 +30,8 @@ canvas mockup.
 
 Live demos: [game HUD](https://ryanspice.com/dev/gpui/examples/game/) ·
 [counter](https://ryanspice.com/dev/gpui/examples/counter/) ·
+[GPUI vs HTML toggle](https://ryanspice.com/dev/gpui/examples/compare/) ·
+[measured stats](https://ryanspice.com/dev/gpui/examples/stats/) ·
 [LLMs guide](https://ryanspice.com/dev/gpui/llms.txt).
 
 ## Repository layout
