@@ -69,6 +69,7 @@ class GpuiPublicContractTests(unittest.TestCase):
         self.assertIn('stage.appendChild(canvas)', demo)
         self.assertIn("window.addEventListener('resize'", demo)
         self.assertIn('HYSTERESIS', demo)
+        self.assertIn('slack per card', demo)
         self.assertIn('getPaintedText', demo)
         self.assertNotIn("createElement('canvas')", demo)
 

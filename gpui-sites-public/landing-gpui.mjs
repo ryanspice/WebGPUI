@@ -49,7 +49,9 @@ function landingLayout(width, forcedColumns) {
   const columns = forcedColumns ?? columnsFor(width);
   return {
     columns,
-    cardWidth: Math.floor((contentWidth - (columns - 1) * CARD_GAP) / columns),
+    // Leave slack per card so a 1 px resize (or a scrollbar appearing) cannot
+    // push the row over the wrap threshold.
+    cardWidth: Math.floor((contentWidth - (columns - 1) * CARD_GAP) / columns) - 6,
     compact: columns === 1,
     height: columns === 1 ? 2000 : columns === 2 ? 1800 : 1280,
   };
