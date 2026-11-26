@@ -49,6 +49,24 @@ class GpuiPublicContractTests(unittest.TestCase):
         self.assertIn('Native GPUI', html)
         self.assertIn('mount(', html)
 
+    def test_landing_page_has_real_gpui_renderer_toggle(self):
+        html = (PUBLIC / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('id="modeHtml" aria-pressed="true"', html)
+        self.assertIn('id="modeGpui" aria-pressed="false"', html)
+        self.assertIn('id="htmlPanel"', html)
+        self.assertRegex(html, r'id="gpuiPanel"[^>]*\bhidden\b')
+        self.assertIn("import('./landing-gpui.mjs?v=0.3.1')", html)
+
+        demo = (PUBLIC / 'landing-gpui.mjs').read_text(encoding='utf-8')
+        self.assertIn("from './v1/gpui.mjs?v=0.3.1'", demo)
+        for descriptor in ('ui.column', 'ui.row', 'ui.view', 'ui.text', 'ui.button'):
+            self.assertIn(descriptor, demo)
+        for content in ('Native GPUI, on the web.', 'Import it', 'Endpoints', 'Requirements'):
+            self.assertIn(content, demo)
+        self.assertIn('panel.appendChild(canvas)', demo)
+        self.assertIn('getPaintedText', demo)
+        self.assertNotIn("createElement('canvas')", demo)
+
     def test_llms_guide_uses_absolute_import_example(self):
         guide = (PUBLIC / 'llms.txt').read_text(encoding='utf-8')
         self.assertIn('https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.3.1', guide)

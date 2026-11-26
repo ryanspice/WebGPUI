@@ -11,7 +11,18 @@
 :root{color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:#10141d;color:#e2e8f0;font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:780px;margin:0 auto;padding:56px 24px 80px}
+main{max-width:780px;margin:0 auto;padding:32px 24px 80px}
+.renderer-switch{max-width:780px;margin:0 auto;padding:20px 24px 0;display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+.mode-label{margin-right:auto;color:#9ca3af;font-size:13px}
+.mode-buttons{display:flex;gap:6px;padding:4px;border:1px solid #374151;border-radius:10px;background:#161d2a}
+.mode-buttons button{font:inherit;font-size:13px;color:#9ca3af;background:transparent;border:1px solid transparent;border-radius:6px;padding:6px 14px;cursor:pointer}
+.mode-buttons button:hover{color:#e2e8f0}
+.mode-buttons button:focus-visible{outline:2px solid #89b4ff;outline-offset:2px}
+.mode-buttons button[aria-pressed="true"]{color:#fff;background:#2563a8;border-color:#89b4ff}
+.gpui-panel{max-width:828px;margin:0 auto;padding:0 24px 80px}
+.gpui-panel[hidden]{display:none}
+.gpui-note{color:#9ca3af;font-size:13px;text-align:center;margin:0 0 12px}
+.gpui-panel canvas{display:block;width:100%;height:auto;border-radius:8px}
 small{color:#9ca3af;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
 h1{font-size:44px;line-height:1.05;letter-spacing:-.04em;margin:.3em 0 .2em}
 h2{font-size:22px;margin-top:2.2em;padding-bottom:.3em;border-bottom:1px solid #2a3446}
@@ -33,10 +44,17 @@ footer{margin-top:3em;color:#9ca3af;font-size:13px}
 </style>
 </head>
 <body>
-<main>
+<nav class="renderer-switch" aria-label="Landing page renderer">
+  <span class="mode-label" id="modeLabel" aria-live="polite">Mode: HTML</span>
+  <div class="mode-buttons" role="group" aria-label="Rendering mode">
+    <button type="button" id="modeHtml" aria-pressed="true">HTML</button>
+    <button type="button" id="modeGpui" aria-pressed="false">GPUI</button>
+  </div>
+</nav>
+<main id="htmlPanel">
 <small>WebGPUI · build v0.3.1</small>
 <h1>Native GPUI, on the web.</h1>
-<p>A versioned JavaScript (ES module) adapter over the upstream <strong>GPUI Native</strong> WebAssembly renderer. This documentation is ordinary HTML; the examples render through a genuine GPUI canvas &mdash; no React DOM, no HTML/CSS imitation of the widgets.</p>
+<p>A versioned JavaScript (ES module) adapter over the upstream <strong>GPUI Native</strong> WebAssembly renderer. The default documentation is ordinary HTML; switch to GPUI to render this same page through a genuine GPUI canvas &mdash; no React DOM, no HTML/CSS imitation of the widgets.</p>
 
 <div class="status"><span class="dot" id="dot"></span><span id="status" role="status">Checking module availability&hellip;</span></div>
 
@@ -60,7 +78,43 @@ footer{margin-top:3em;color:#9ca3af;font-size:13px}
 
 <footer>Part of <a href="https://ryanspice.com/">ryanspice.com</a>. Built from pinned upstream <a href="https://github.com/countradooku/gpui-native">countradooku/gpui-native</a><span id="rev"></span>; license notices ship with the assets.</footer>
 </main>
+<section id="gpuiPanel" class="gpui-panel" aria-label="GPUI landing page" hidden>
+  <p class="gpui-note" id="gpuiStatus" role="status">Loading the genuine GPUI WASM/WebGL2 canvas&hellip;</p>
+</section>
 <script type="module">
+const htmlPanel = document.querySelector('#htmlPanel');
+const gpuiPanel = document.querySelector('#gpuiPanel');
+const modeHtml = document.querySelector('#modeHtml');
+const modeGpui = document.querySelector('#modeGpui');
+const modeLabel = document.querySelector('#modeLabel');
+const gpuiStatus = document.querySelector('#gpuiStatus');
+let gpuiPromise;
+const setMode = (mode) => {
+  const gpui = mode === 'gpui';
+  htmlPanel.hidden = gpui;
+  gpuiPanel.hidden = !gpui;
+  modeHtml.setAttribute('aria-pressed', String(!gpui));
+  modeGpui.setAttribute('aria-pressed', String(gpui));
+  modeLabel.textContent = gpui ? 'Mode: GPUI · WASM/WebGL2' : 'Mode: HTML';
+  document.body.dataset.renderer = mode;
+  if (gpui && !gpuiPromise) {
+    gpuiStatus.textContent = 'Loading the genuine GPUI WASM/WebGL2 canvas…';
+    gpuiPromise = import('./landing-gpui.mjs?v=0.3.1')
+      .then(({ mountLanding }) => mountLanding(gpuiPanel))
+      .then(() => {
+        gpuiStatus.textContent = 'GPUI mode is a real WASM/WebGL2 canvas. Endpoint buttons open the same links.';
+      })
+      .catch((error) => {
+        gpuiPromise = undefined;
+        gpuiStatus.textContent = 'GPUI initialization failed: ' + (error?.message ?? String(error));
+        console.error(error);
+      });
+  }
+};
+modeHtml.addEventListener('click', () => setMode('html'));
+modeGpui.addEventListener('click', () => setMode('gpui'));
+document.body.dataset.renderer = 'html';
+
 const url = new URL('./v1/gpui.mjs?v=0.3.1', location.href);
 document.querySelector('#snippet').textContent =
   "import { mount, ui } from " + JSON.stringify(url.href) + ";\n" +
