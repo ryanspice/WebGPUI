@@ -44,6 +44,7 @@ function landingLayout(width) {
   const contentWidth = width - 2 * PAGE_PADDING;
   const columns = Math.max(1, Math.floor((contentWidth + CARD_GAP) / (CARD_MIN_WIDTH + CARD_GAP)));
   return {
+    columns,
     cardWidth: Math.floor((contentWidth - (columns - 1) * CARD_GAP) / columns),
     compact: columns === 1,
     height: columns === 1 ? 2000 : columns === 2 ? 1800 : 1280,
@@ -139,12 +140,13 @@ export async function mountLanding(stage) {
   let width = stage.clientWidth || Math.min(document.documentElement.clientWidth, 780);
   // The engine fills the canvas parent in both axes. A definite stage height
   // lets it resize with the page without falling back to the canvas aspect ratio.
-  const sizeStage = () => {
-    const layout = landingLayout(width);
-    stage.style.height = `${layout.height}px`;
-    return layout;
+  const sizeStage = (next) => {
+    const height = `${next.height}px`;
+    if (stage.style.height !== height) stage.style.height = height;
   };
-  const layout = sizeStage();
+  const layout = landingLayout(width);
+  sizeStage(layout);
+  let columns = layout.columns;
   let updateLayout;
   const root = await mount({
     title: 'WebGPUI SDK landing page',
@@ -177,12 +179,22 @@ export async function mountLanding(stage) {
   stage.appendChild(canvas);
   canvas.dataset.gpuiLanding = 'true';
   canvas.setAttribute('aria-label', 'WebGPUI landing page rendered by GPUI');
-  new ResizeObserver(() => {
+  // Debounce resize bursts and only re-render when the column count changes.
+  // Updating cardWidth on every pixel re-lays out the native tree and flickers.
+  let resizeFrame = 0;
+  const applyResize = () => {
     const nextWidth = stage.clientWidth;
-    if (!nextWidth || nextWidth === width) return;
+    if (!nextWidth) return;
+    const next = landingLayout(nextWidth);
+    if (next.columns === columns) return;
+    columns = next.columns;
     width = nextWidth;
-    const { cardWidth, compact } = sizeStage();
-    updateLayout?.({ cardWidth, compact });
+    sizeStage(next);
+    updateLayout?.({ cardWidth: next.cardWidth, compact: next.compact });
+  };
+  new ResizeObserver(() => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(applyResize);
   }).observe(stage);
 
   const paintDeadline = Date.now() + 10000;
