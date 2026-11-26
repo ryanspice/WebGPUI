@@ -51,10 +51,12 @@ class GpuiPublicContractTests(unittest.TestCase):
 
     def test_landing_page_has_real_gpui_renderer_toggle(self):
         html = (PUBLIC / 'index.html').read_text(encoding='utf-8')
-        self.assertIn('id="modeHtml" aria-pressed="true"', html)
-        self.assertIn('id="modeGpui" aria-pressed="false"', html)
+        self.assertIn('id="modeHtml" aria-pressed="false"', html)
+        self.assertIn('id="modeGpui" aria-pressed="true"', html)
+        self.assertIn('id="gpuiLoader"', html)
+        self.assertIn('gpui-spinner', html)
+        self.assertIn("setMode('gpui')", html)
         self.assertIn('id="htmlPanel"', html)
-        self.assertRegex(html, r'id="gpuiPanel"[^>]*\bhidden\b')
         self.assertIn('class="gpui-stage"', html)
         self.assertIn("import('./landing-gpui.mjs?v=0.3.1')", html)
 

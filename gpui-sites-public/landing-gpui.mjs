@@ -46,7 +46,7 @@ function landingLayout(width) {
   return {
     cardWidth: Math.floor((contentWidth - (columns - 1) * CARD_GAP) / columns),
     compact: columns === 1,
-    height: columns === 1 ? 2300 : columns === 2 ? 1700 : 1400,
+    height: columns === 1 ? 2000 : columns === 2 ? 1800 : 1280,
   };
 }
 

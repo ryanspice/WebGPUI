@@ -23,6 +23,10 @@ main{max-width:780px;margin:0 auto;padding:32px 24px 80px}
 .gpui-panel[hidden]{display:none}
 .gpui-note{color:#9ca3af;font-size:13px;text-align:center;margin:0 24px 12px}
 .gpui-stage canvas{display:block;width:100%;height:100%;border-radius:8px;touch-action:pan-y!important}
+.gpui-loader{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:260px;color:#9ca3af;font-size:13px}
+.gpui-loader[hidden]{display:none}
+.gpui-spinner{width:34px;height:34px;border:3px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:gpui-spin .8s linear infinite}
+@keyframes gpui-spin{to{transform:rotate(360deg)}}
 small{color:#9ca3af;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
 h1{font-size:44px;line-height:1.05;letter-spacing:-.04em;margin:.3em 0 .2em}
 h2{font-size:22px;margin-top:2.2em;padding-bottom:.3em;border-bottom:1px solid #2a3446}
@@ -45,10 +49,10 @@ footer{margin-top:3em;color:#9ca3af;font-size:13px}
 </head>
 <body>
 <nav class="renderer-switch" aria-label="Landing page renderer">
-  <span class="mode-label" id="modeLabel" aria-live="polite">Mode: HTML</span>
+  <span class="mode-label" id="modeLabel" aria-live="polite">Mode: GPUI · WASM/WebGL2</span>
   <div class="mode-buttons" role="group" aria-label="Rendering mode">
-    <button type="button" id="modeHtml" aria-pressed="true">HTML</button>
-    <button type="button" id="modeGpui" aria-pressed="false">GPUI</button>
+    <button type="button" id="modeHtml" aria-pressed="false">HTML</button>
+    <button type="button" id="modeGpui" aria-pressed="true">GPUI</button>
   </div>
 </nav>
 <main id="htmlPanel">
@@ -80,6 +84,10 @@ footer{margin-top:3em;color:#9ca3af;font-size:13px}
 </main>
 <section id="gpuiPanel" class="gpui-panel" aria-label="GPUI landing page" hidden>
   <p class="gpui-note" id="gpuiStatus" role="status">Loading the genuine GPUI WASM/WebGL2 canvas&hellip;</p>
+  <div class="gpui-loader" id="gpuiLoader" role="status" aria-label="Loading GPUI canvas">
+    <span class="gpui-spinner" aria-hidden="true"></span>
+    <span>Starting the GPUI WASM/WebGL2 renderer&hellip;</span>
+  </div>
   <div class="gpui-stage"></div>
 </section>
 <script type="module">
@@ -89,6 +97,7 @@ const modeHtml = document.querySelector('#modeHtml');
 const modeGpui = document.querySelector('#modeGpui');
 const modeLabel = document.querySelector('#modeLabel');
 const gpuiStatus = document.querySelector('#gpuiStatus');
+const gpuiLoader = document.querySelector('#gpuiLoader');
 let gpuiPromise;
 const setMode = (mode) => {
   const gpui = mode === 'gpui';
@@ -100,13 +109,16 @@ const setMode = (mode) => {
   document.body.dataset.renderer = mode;
   if (gpui && !gpuiPromise) {
     gpuiStatus.textContent = 'Loading the genuine GPUI WASM/WebGL2 canvas…';
+    gpuiLoader.hidden = false;
     gpuiPromise = import('./landing-gpui.mjs?v=0.3.1')
       .then(({ mountLanding }) => mountLanding(gpuiPanel.querySelector('.gpui-stage')))
       .then(() => {
+        gpuiLoader.hidden = true;
         gpuiStatus.textContent = 'GPUI mode is a real WASM/WebGL2 canvas. Endpoint buttons open the same links.';
       })
       .catch((error) => {
         gpuiPromise = undefined;
+        gpuiLoader.hidden = true;
         gpuiStatus.textContent = 'GPUI initialization failed: ' + (error?.message ?? String(error));
         console.error(error);
       });
@@ -114,7 +126,9 @@ const setMode = (mode) => {
 };
 modeHtml.addEventListener('click', () => setMode('html'));
 modeGpui.addEventListener('click', () => setMode('gpui'));
-document.body.dataset.renderer = 'html';
+// GPUI is the default view; start it immediately so the loader appears without
+// an HTML flash while the endpoint check below runs.
+setMode('gpui');
 
 const url = new URL('./v1/gpui.mjs?v=0.3.1', location.href);
 document.querySelector('#snippet').textContent =
@@ -146,6 +160,7 @@ try {
   dot.className = 'dot bad';
   status.textContent = 'Module request failed: ' + e.message;
 }
+
 </script>
 </body>
 </html>
