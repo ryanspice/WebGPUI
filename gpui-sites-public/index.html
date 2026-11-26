@@ -19,10 +19,10 @@ main{max-width:780px;margin:0 auto;padding:32px 24px 80px}
 .mode-buttons button:hover{color:#e2e8f0}
 .mode-buttons button:focus-visible{outline:2px solid #89b4ff;outline-offset:2px}
 .mode-buttons button[aria-pressed="true"]{color:#fff;background:#2563a8;border-color:#89b4ff}
-.gpui-panel{max-width:828px;margin:0 auto;padding:0 24px 80px}
+.gpui-panel{max-width:780px;margin:0 auto;padding:0 0 80px}
 .gpui-panel[hidden]{display:none}
-.gpui-note{color:#9ca3af;font-size:13px;text-align:center;margin:0 0 12px}
-.gpui-panel canvas{display:block;width:100%;height:auto;border-radius:8px}
+.gpui-note{color:#9ca3af;font-size:13px;text-align:center;margin:0 24px 12px}
+.gpui-stage canvas{display:block;width:100%;height:100%;border-radius:8px;touch-action:pan-y!important}
 small{color:#9ca3af;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
 h1{font-size:44px;line-height:1.05;letter-spacing:-.04em;margin:.3em 0 .2em}
 h2{font-size:22px;margin-top:2.2em;padding-bottom:.3em;border-bottom:1px solid #2a3446}
@@ -80,6 +80,7 @@ footer{margin-top:3em;color:#9ca3af;font-size:13px}
 </main>
 <section id="gpuiPanel" class="gpui-panel" aria-label="GPUI landing page" hidden>
   <p class="gpui-note" id="gpuiStatus" role="status">Loading the genuine GPUI WASM/WebGL2 canvas&hellip;</p>
+  <div class="gpui-stage"></div>
 </section>
 <script type="module">
 const htmlPanel = document.querySelector('#htmlPanel');
@@ -100,7 +101,7 @@ const setMode = (mode) => {
   if (gpui && !gpuiPromise) {
     gpuiStatus.textContent = 'Loading the genuine GPUI WASM/WebGL2 canvas…';
     gpuiPromise = import('./landing-gpui.mjs?v=0.3.1')
-      .then(({ mountLanding }) => mountLanding(gpuiPanel))
+      .then(({ mountLanding }) => mountLanding(gpuiPanel.querySelector('.gpui-stage')))
       .then(() => {
         gpuiStatus.textContent = 'GPUI mode is a real WASM/WebGL2 canvas. Endpoint buttons open the same links.';
       })

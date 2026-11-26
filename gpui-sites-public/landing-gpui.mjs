@@ -36,9 +36,23 @@ const sectionTitle = (label) => text(label, {
   color: colors.heading, fontSize: 22, fontWeight: 600, lineHeight: 30,
 });
 
-const endpoint = (title, description, href, compact) => ui.view({
+const PAGE_PADDING = 24;
+const CARD_MIN_WIDTH = 220;
+const CARD_GAP = 12;
+
+function landingLayout(width) {
+  const contentWidth = width - 2 * PAGE_PADDING;
+  const columns = Math.max(1, Math.floor((contentWidth + CARD_GAP) / (CARD_MIN_WIDTH + CARD_GAP)));
+  return {
+    cardWidth: Math.floor((contentWidth - (columns - 1) * CARD_GAP) / columns),
+    compact: columns === 1,
+    height: columns === 1 ? 2300 : columns === 2 ? 1700 : 1400,
+  };
+}
+
+const endpoint = (title, description, href, width) => ui.view({
   style: {
-    width: compact ? '100%' : 360, minHeight: 86, padding: 14, gap: 4,
+    width, minHeight: 86, padding: 14, gap: 4,
     background: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 8,
   },
 }, [
@@ -49,7 +63,7 @@ const endpoint = (title, description, href, compact) => ui.view({
   text(description, { color: colors.muted, fontSize: 13, lineHeight: 20 }),
 ]);
 
-function landingTree({ compact, snippet, status, revision }) {
+function landingTree({ cardWidth, compact, snippet, status, revision }) {
   const endpoints = [
     ['Native counter', 'Interactive GPUI smoke test', './examples/counter/'],
     ['Game HUD', 'GPUI dashboard demo', './examples/game/'],
@@ -61,7 +75,7 @@ function landingTree({ compact, snippet, status, revision }) {
   ];
 
   return ui.column({
-    style: { width: '100%', height: '100%', padding: 24, background: colors.page },
+    style: { width: '100%', height: '100%', padding: PAGE_PADDING, background: colors.page },
   }, [
     text('WebGPUI · build v0.3.1', {
       color: colors.muted, fontSize: 12, fontWeight: 600, lineHeight: 18,
@@ -80,7 +94,7 @@ function landingTree({ compact, snippet, status, revision }) {
       },
     }, [
       ui.view({ style: { width: 10, height: 10, flexShrink: 0, borderRadius: 999, background: colors.ok } }),
-      text(status, { flexGrow: 1, color: colors.heading, fontSize: 13, lineHeight: 20 }),
+      text(status, { flexGrow: 1, flexShrink: 1, minWidth: 0, color: colors.heading, fontSize: 13, lineHeight: 20 }),
     ]),
 
     sectionTitle('Import it'),
@@ -98,8 +112,8 @@ function landingTree({ compact, snippet, status, revision }) {
 
     sectionTitle('Endpoints'),
     ui.row({
-      style: { width: '100%', flexWrap: 'wrap', gap: 12, marginTop: 16 },
-    }, endpoints.map(([title, description, href]) => endpoint(title, description, href, compact))),
+      style: { width: '100%', flexWrap: 'wrap', gap: CARD_GAP, marginTop: 16 },
+    }, endpoints.map(([title, description, href]) => endpoint(title, description, href, cardWidth))),
 
     sectionTitle('Requirements'),
     text('The runtime is single-threaded WebAssembly and uses WebGL2 by default (build v0.3.1), plus WebAssembly support in the browser. It does not require cross-origin isolation (SharedArrayBuffer) headers. If WebGL2 or WASM is unavailable the example shows an explicit initialization error — it never silently falls back to HTML rendering.', {
@@ -113,7 +127,7 @@ function landingTree({ compact, snippet, status, revision }) {
       link('ryanspice.com', 'https://ryanspice.com/'),
       text('. Built from pinned upstream', { color: colors.muted, fontSize: 13, lineHeight: 20 }),
       link('countradooku/gpui-native', 'https://github.com/countradooku/gpui-native'),
-      text(revision + '; license notices ship with the assets.', { color: colors.muted, fontSize: 13, lineHeight: 20 }),
+      text(revision + '; license notices ship with the assets.', { width: '100%', color: colors.muted, fontSize: 13, lineHeight: 20 }),
     ]),
     text('GPUI mode · real WASM/WebGL2 canvas · no DOM widgets', {
       width: '100%', marginTop: 20, color: colors.muted, fontSize: 12, lineHeight: 18,
@@ -121,19 +135,32 @@ function landingTree({ compact, snippet, status, revision }) {
   ]);
 }
 
-export async function mountLanding(panel) {
-  const compact = panel.clientWidth < 640;
+export async function mountLanding(stage) {
+  let width = stage.clientWidth || Math.min(document.documentElement.clientWidth, 780);
+  // The engine fills the canvas parent in both axes. A definite stage height
+  // lets it resize with the page without falling back to the canvas aspect ratio.
+  const sizeStage = () => {
+    const layout = landingLayout(width);
+    stage.style.height = `${layout.height}px`;
+    return layout;
+  };
+  const layout = sizeStage();
+  let updateLayout;
   const root = await mount({
     title: 'WebGPUI SDK landing page',
-    width: compact ? 560 : 780,
-    height: compact ? 2100 : 1400,
-    initialState: {},
-    view: () => landingTree({
-      compact,
-      snippet: document.querySelector('#snippet')?.textContent ?? '',
-      status: document.querySelector('#status')?.textContent ?? 'JavaScript endpoint reachable.',
-      revision: document.querySelector('#rev')?.textContent ?? '',
-    }),
+    width,
+    height: layout.height,
+    initialState: { cardWidth: layout.cardWidth, compact: layout.compact },
+    view: (state, update) => {
+      updateLayout = update;
+      return landingTree({
+        cardWidth: state.cardWidth,
+        compact: state.compact,
+        snippet: document.querySelector('#snippet')?.textContent ?? '',
+        status: document.querySelector('#status')?.textContent ?? 'JavaScript endpoint reachable.',
+        revision: document.querySelector('#rev')?.textContent ?? '',
+      });
+    },
   });
   window.__root = root;
 
@@ -147,9 +174,16 @@ export async function mountLanding(panel) {
 
   // The engine appends its canvas to document.body; move it into the panel so
   // switching back to HTML really hides the native renderer.
-  panel.appendChild(canvas);
+  stage.appendChild(canvas);
   canvas.dataset.gpuiLanding = 'true';
   canvas.setAttribute('aria-label', 'WebGPUI landing page rendered by GPUI');
+  new ResizeObserver(() => {
+    const nextWidth = stage.clientWidth;
+    if (!nextWidth || nextWidth === width) return;
+    width = nextWidth;
+    const { cardWidth, compact } = sizeStage();
+    updateLayout?.({ cardWidth, compact });
+  }).observe(stage);
 
   const paintDeadline = Date.now() + 10000;
   let painted = [];
