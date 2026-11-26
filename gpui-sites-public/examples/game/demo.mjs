@@ -2,7 +2,7 @@
 // controlled input and pointer interaction. Imports the absolute SDK entry.
 const status = document.querySelector('#status');
 try {
-  const { mount, ui } = await import('../../v1/gpui.mjs?v=0.2.0');
+  const { mount, ui } = await import('../../v1/gpui.mjs?v=0.3.0');
   const buttonStyle = { padding: 10, background: '#334155', borderRadius: 6 };
 
   const root = await mount({

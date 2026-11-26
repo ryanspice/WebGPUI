@@ -2,7 +2,7 @@
 // keyboard/pointer interaction and resize. Imports the absolute SDK entry.
 const status = document.querySelector('#status');
 try {
-  const { mount, ui } = await import('../../v1/gpui.mjs?v=0.2.0');
+  const { mount, ui } = await import('../../v1/gpui.mjs?v=0.3.0');
   const secondaryButtonStyle = {
     display: 'flex',
     flexGrow: 1,

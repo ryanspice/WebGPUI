@@ -1,11 +1,12 @@
 # WebGPUI
 
-**WebGPUI v0.2.0** is a small, CDN-first Web SDK over the real upstream
+**WebGPUI v0.3.0** is a small, CDN-first Web SDK over the real upstream
 `gpui-native` Rust/WebAssembly renderer. It paints genuine GPU-composited GPUI
 UI in a browser canvas — it is **not** React DOM, an HTML/CSS imitation, or a
 canvas mockup.
 
-- Runtime: upstream Svelte 5 adapter (`@gpui-native/svelte` 5.57.0) → WebGPU/WASM.
+- Runtime: upstream Svelte 5 adapter (`@gpui-native/svelte` 5.57.0) → WebGL2/WASM
+  (WebGL2 is the default backend as of v0.3.0).
 - P0 facade: one ES module, no build step, **zero React** in the dependency graph.
 - React and Vue remain supported opt-in custom renderers in the upstream SDK;
   they are not bundled into the CDN entry.
@@ -15,7 +16,7 @@ canvas mockup.
 ```html
 <script type="module">
   const { mount, ui } = await import(
-    'https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.2.0'
+    'https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.3.0'
   );
   await mount({
     initialState: { count: 0 },

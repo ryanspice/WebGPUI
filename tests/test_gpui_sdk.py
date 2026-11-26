@@ -17,7 +17,7 @@ EXPECTED_EXPORTS = ['mount', 'ui', 'initGpuiWeb', 'resetRender', 'version']
 
 class GpuiPublicContractTests(unittest.TestCase):
     def test_manifest_lists_verified_exports(self):
-        self.assertEqual(MANIFEST['version'], '0.2.0')
+        self.assertEqual(MANIFEST['version'], '0.3.0')
         self.assertEqual(MANIFEST['module'], './gpui.mjs')
         self.assertEqual(MANIFEST['sharedMemoryRequired'], False)
         self.assertEqual(MANIFEST['framework'], 'svelte')
@@ -32,7 +32,7 @@ class GpuiPublicContractTests(unittest.TestCase):
 
     def test_counter_imports_absolute_sdk_path(self):
         demo = (PUBLIC / 'examples' / 'counter' / 'demo.mjs').read_text(encoding='utf-8')
-        self.assertIn("import('../../v1/gpui.mjs?v=0.2.0')", demo)
+        self.assertIn("import('../../v1/gpui.mjs?v=0.3.0')", demo)
         self.assertIn('mount(', demo)
         self.assertIn('ui.column', demo)
         self.assertIn('ui.input', demo)
@@ -51,7 +51,7 @@ class GpuiPublicContractTests(unittest.TestCase):
 
     def test_llms_guide_uses_absolute_import_example(self):
         guide = (PUBLIC / 'llms.txt').read_text(encoding='utf-8')
-        self.assertIn('https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.2.0', guide)
+        self.assertIn('https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.3.0', guide)
         self.assertIn('ui.button', guide)
         self.assertIn('WebGPU', guide)
         self.assertIn('Svelte', guide)
@@ -84,7 +84,7 @@ class GpuiPublicContractTests(unittest.TestCase):
         self.assertIn('gpuiProps', sdk)  # both bare and {style:...} forms work
         self.assertIn('mount() already called', sdk)
         self.assertIn('onError?.(error)', sdk)
-        self.assertIn('navigator.gpu', sdk)
+        self.assertIn('GPUI Web requires WebGL2', sdk)
         self.assertIn('export function resetRender', sdk)
 
         host = (ROOT / 'gpui-sites' / 'Host.svelte').read_text(encoding='utf-8')
@@ -98,7 +98,7 @@ class GpuiPublicContractTests(unittest.TestCase):
         game = PUBLIC / 'examples' / 'game'
         self.assertTrue((game / 'index.html').is_file())
         demo = (game / 'demo.mjs').read_text(encoding='utf-8')
-        self.assertIn("import('../../v1/gpui.mjs?v=0.2.0')", demo)
+        self.assertIn("import('../../v1/gpui.mjs?v=0.3.0')", demo)
         self.assertIn('ui.column', demo)
         self.assertIn('Score: ', demo)
         self.assertIn('getPaintedText', demo)

@@ -34,7 +34,7 @@ footer{margin-top:3em;color:#9ca3af;font-size:13px}
 </head>
 <body>
 <main>
-<small>GPUI Web SDK · v1</small>
+<small>WebGPUI · build v0.3.0</small>
 <h1>Native GPUI, on the web.</h1>
 <p>A versioned JavaScript (ES module) adapter over the upstream <strong>GPUI Native</strong> WebAssembly renderer. This documentation is ordinary HTML; the examples render through a genuine GPUI canvas &mdash; no React DOM, no HTML/CSS imitation of the widgets.</p>
 
@@ -53,12 +53,12 @@ footer{margin-top:3em;color:#9ca3af;font-size:13px}
 </div>
 
 <h2>Requirements</h2>
-<p>The runtime is single-threaded WebAssembly and needs WebGPU plus WebAssembly support in the browser. It does not require cross-origin isolation (SharedArrayBuffer) headers. If the GPU or WASM is unavailable the example shows an explicit initialization error &mdash; it never silently falls back to HTML rendering.</p>
+<p>The runtime is single-threaded WebAssembly and uses WebGL2 by default (build v0.3.0), plus WebAssembly support in the browser. It does not require cross-origin isolation (SharedArrayBuffer) headers. If WebGL2 or WASM is unavailable the example shows an explicit initialization error &mdash; it never silently falls back to HTML rendering.</p>
 
 <footer>Part of <a href="https://ryanspice.com/">ryanspice.com</a>. Built from pinned upstream <a href="https://github.com/countradooku/gpui-native">countradooku/gpui-native</a><span id="rev"></span>; license notices ship with the assets.</footer>
 </main>
 <script type="module">
-const url = new URL('./v1/gpui.mjs?v=0.2.0', location.href);
+const url = new URL('./v1/gpui.mjs?v=0.3.0', location.href);
 document.querySelector('#snippet').textContent =
   "import { mount, ui } from " + JSON.stringify(url.href) + ";\n" +
   "await mount({ initialState: { count: 0 },\n" +

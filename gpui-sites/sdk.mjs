@@ -7,7 +7,7 @@ import { render, resetRender as nativeResetRender, initGpuiWeb } from '@gpui-nat
 import Host from './Host.svelte';
 
 export { initGpuiWeb };
-export const version = '0.2.0';
+export const version = '0.3.0';
 
 let mounted = false;
 
@@ -66,8 +66,8 @@ export async function mount(config = {}) {
   if (typeof view !== 'function') throw new Error('mount() requires a view(state, update) function');
   // Fail explicitly instead of resolving into a window that never opens.
   const webgl = document.createElement('canvas').getContext('webgl2');
-  if (!navigator.gpu && !webgl)
-    throw new Error('GPUI Web requires WebGPU or WebGL2; neither is available');
+  if (!webgl)
+    throw new Error('GPUI Web requires WebGL2; it is not available');
   try {
     await initGpuiWeb();
   } catch (error) {
