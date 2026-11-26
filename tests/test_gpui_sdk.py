@@ -21,6 +21,9 @@ class GpuiPublicContractTests(unittest.TestCase):
         self.assertEqual(MANIFEST['module'], './gpui.mjs')
         self.assertEqual(MANIFEST['sharedMemoryRequired'], False)
         self.assertEqual(MANIFEST['framework'], 'svelte')
+        self.assertEqual(MANIFEST['requires'], ['WebGL2', 'WebAssembly'])
+        self.assertEqual(MANIFEST['demo'], '../examples/counter/')
+        self.assertEqual(MANIFEST['agentGuide'], '../llms.txt')
         for export in EXPECTED_EXPORTS:
             self.assertIn(export, MANIFEST['exports'])
 
@@ -110,6 +113,9 @@ class GpuiPublicContractTests(unittest.TestCase):
         self.assertIn('onError?.(error)', sdk)
         self.assertIn('GPUI Web requires WebGL2', sdk)
         self.assertIn('export function resetRender', sdk)
+        # The mount slot must be reserved before the first await.
+        self.assertEqual(sdk.count('mounted = true;'), 1)
+        self.assertLess(sdk.index('mounted = true;'), sdk.index('await initGpuiWeb()'))
 
         host = (ROOT / 'gpui-sites' / 'Host.svelte').read_text(encoding='utf-8')
         self.assertIn('$derived.by', host)

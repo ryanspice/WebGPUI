@@ -82,8 +82,14 @@ try {
   $meta | Add-Member -NotePropertyName wasmAssets -NotePropertyValue @($wasm | ForEach-Object { [IO.Path]::GetRelativePath((Split-Path $runtime), $_.FullName).Replace('\','/') }) -Force
   $meta | Add-Member -NotePropertyName builtAt -NotePropertyValue (Get-Date).ToString('o') -Force
   $meta | ConvertTo-Json -Depth 10 | Set-Content $manifestPath -Encoding utf8
+  # Notices must live inside the published gpui/ tree; only that child is
+  # deployed to /dev/gpui/. Keep the dist-sites/ copies for provenance too.
   foreach ($name in 'LICENSE','THIRD_PARTY_NOTICES.md','LICENSES') {
-    if (Test-Path (Join-Path $repo $name)) { Copy-Item (Join-Path $repo $name) $dist -Recurse -Force }
+    $source = Join-Path $repo $name
+    if (Test-Path $source) {
+      Copy-Item $source $dist -Recurse -Force
+      Copy-Item $source (Join-Path $dist 'gpui') -Recurse -Force
+    }
   }
   Write-Host "[GPUI] Static deployment root: $dist" -ForegroundColor Green
   Write-Host '[GPUI] Serve over HTTPS (or localhost); test the native counter and CORS before publishing.'

@@ -7,7 +7,7 @@ instructions and any more specific repository rules.
 
 ## Engineering
 
-- The P0 CDN facade is **Svelte-first** over the real `gpui-native` WASM/WebGPU
+- The P0 CDN facade is **Svelte-first** over the real `gpui-native` WASM/WebGL2 (default)
   renderer. Keep React out of `gpui-sites/sdk.mjs` and the P0 bundle; React and
   Vue are opt-in upstream renderers, not part of the CDN entry.
 - Version is `0.2.0`. Keep `sdk.mjs`, `llms.txt`, `manifest.json`, docs and tests

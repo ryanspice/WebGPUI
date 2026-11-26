@@ -153,6 +153,7 @@ export async function mountLanding(stage) {
   const layout = landingLayout(width);
   sizeStage(layout);
   let columns = layout.columns;
+  let cardWidth = layout.cardWidth;
   let updateLayout;
   const root = await mount({
     title: 'WebGPUI SDK landing page',
@@ -198,12 +199,22 @@ export async function mountLanding(stage) {
       nextColumns = columns;
     if (nextColumns < columns && nextWidth > widthForColumns(columns) - HYSTERESIS)
       nextColumns = columns;
-    if (nextColumns === columns) return;
+    const next = landingLayout(nextWidth, nextColumns);
+    if (nextColumns === columns) {
+      // Same height/breakpoint, but the cards still need the new width or an
+      // extra row appears and the footer clips. Debounce keeps this off drag frames.
+      if (next.cardWidth !== cardWidth) {
+        cardWidth = next.cardWidth;
+        width = nextWidth;
+        updateLayout?.({ cardWidth, compact: next.compact });
+      }
+      return;
+    }
     columns = nextColumns;
+    cardWidth = next.cardWidth;
     width = nextWidth;
-    const next = landingLayout(width, columns);
     sizeStage(next);
-    updateLayout?.({ cardWidth: next.cardWidth, compact: next.compact });
+    updateLayout?.({ cardWidth, compact: next.compact });
   };
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);

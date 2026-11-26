@@ -68,9 +68,13 @@ export async function mount(config = {}) {
   const webgl = document.createElement('canvas').getContext('webgl2');
   if (!webgl)
     throw new Error('GPUI Web requires WebGL2; it is not available');
+  // Reserve before the first await. Without this, two concurrent mount() calls
+  // both pass the guard and share one window before either sets the flag.
+  mounted = true;
   try {
     await initGpuiWeb();
   } catch (error) {
+    mounted = false;
     onError?.(error);
     throw new Error('GPUI Web initialization failed: ' + (error?.message ?? String(error)));
   }
@@ -80,11 +84,11 @@ export async function mount(config = {}) {
       ...(onError ? { onError } : {}),
       props: { tree: view, initialState, ...(onError ? { onError } : {}) },
     });
-    mounted = true;
     const close = root.close?.bind(root);
     if (close) root.close = () => { mounted = false; close(); };
     return root;
   } catch (error) {
+    mounted = false;
     onError?.(error);
     throw error;
   }

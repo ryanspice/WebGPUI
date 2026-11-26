@@ -58,7 +58,8 @@
     const htmlClick = performance.now() - tHtml0;
     replica.remove();
     add('DOM nodes for widget', '1 canvas', String(htmlNodes));
-    add('Click → visible update', ms(htmlClick), ms(htmlClick));
+    // No "Click → visible update" row: the HTML replica click has no state to
+    // verify, so reusing the GPUI timer for both columns would mislead.
 
     // GPUI: module load, native init, first paint, interaction latency.
     const t0 = performance.now();

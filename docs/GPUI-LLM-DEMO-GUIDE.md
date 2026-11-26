@@ -33,7 +33,7 @@ A complete, self-contained demo document. One `mount()` per document.
   <script type="module">
     const status = document.querySelector('#status');
     try {
-      const { mount, ui } = await import('https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.2.0');
+      const { mount, ui } = await import('https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.3.1');
 
       const buttonStyle = { padding: 12, background: '#334155', borderRadius: 6 };
 
@@ -82,7 +82,7 @@ inside the GPUI window comes from `ui.*` descriptors and GPUI style objects.
 | `mount(config)` | Initialize WASM and render exactly one GPUI window. A second call throws; call `resetRender()` first. Returns the window root. |
 | `initGpuiWeb()` | Await manually if you need the WASM backend before mounting. |
 | `resetRender()` | Tear down the current window and allow a new `mount()`. |
-| `version` | `'0.2.0'`. |
+| `version` | `'0.3.1'`. |
 | `ui.*` | Declarative descriptor builders (below). |
 
 `mount(config)` fields:
@@ -163,7 +163,7 @@ new types (`checkbox`, `list`, etc.) or hand-write `{ type: ... }` objects.
 
 ### 2.4 Native-rendering requirements
 
-- Requires WebGPU + WebAssembly. A `<canvas>` appearing is **necessary but not
+- Requires WebGL2 + WebAssembly (WebGL2 is the default backend). A `<canvas>` appearing is **necessary but not
   sufficient** — it does not prove anything was painted.
 - If GPU/WASM is blocked, surface an explicit error. Never substitute an HTML
   fallback and call it a GPUI demo.
@@ -192,7 +192,7 @@ Give this to the model, replacing the bracketed description:
 Write a single self-contained HTML file that demos [DESCRIPTION] using the GPUI
 Web SDK. Follow these rules exactly:
 
-1. Import only: const { mount, ui } = await import('https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.2.0')
+1. Import only: const { mount, ui } = await import('https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.3.1')
 2. Call mount() exactly once, with initialState, title/width/height, and a
    view(state, update) function.
 3. Build the UI only from ui.column, ui.row, ui.view, ui.text, ui.button,

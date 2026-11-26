@@ -29,7 +29,7 @@ try {
         ui.button('Heal', () => update({ hp: Math.min(100, state.hp + 10) }), { style: buttonStyle }),
         ui.button('Reset', () => update({ score: 0, hp: 100 }), { style: buttonStyle }),
       ]),
-      ui.text('Native GPUI canvas — real WASM/WebGPU rendering.'),
+      ui.text('Native GPUI canvas — real WASM/WebGL2 rendering.'),
     ]),
   });
   window.__root = root; // documented validation protocol
