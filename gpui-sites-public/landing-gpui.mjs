@@ -40,9 +40,13 @@ const PAGE_PADDING = 24;
 const CARD_MIN_WIDTH = 220;
 const CARD_GAP = 12;
 
-function landingLayout(width) {
+const columnsFor = (width) => Math.max(1, Math.floor((width - 2 * PAGE_PADDING + CARD_GAP) / (CARD_MIN_WIDTH + CARD_GAP)));
+const widthForColumns = (count) => count * (CARD_MIN_WIDTH + CARD_GAP) - CARD_GAP + 2 * PAGE_PADDING;
+const HYSTERESIS = 24;
+
+function landingLayout(width, forcedColumns) {
   const contentWidth = width - 2 * PAGE_PADDING;
-  const columns = Math.max(1, Math.floor((contentWidth + CARD_GAP) / (CARD_MIN_WIDTH + CARD_GAP)));
+  const columns = forcedColumns ?? columnsFor(width);
   return {
     columns,
     cardWidth: Math.floor((contentWidth - (columns - 1) * CARD_GAP) / columns),
@@ -179,23 +183,30 @@ export async function mountLanding(stage) {
   stage.appendChild(canvas);
   canvas.dataset.gpuiLanding = 'true';
   canvas.setAttribute('aria-label', 'WebGPUI landing page rendered by GPUI');
-  // Debounce resize bursts and only re-render when the column count changes.
-  // Updating cardWidth on every pixel re-lays out the native tree and flickers.
-  let resizeFrame = 0;
+  // Resize only at the end of a drag, and only when the column count really
+  // changes. Re-laying out the native tree on every resize frame is what made
+  // the endpoint cards flicker; hysteresis also stops scrollbar-induced flips.
+  let resizeTimer = 0;
   const applyResize = () => {
     const nextWidth = stage.clientWidth;
     if (!nextWidth) return;
-    const next = landingLayout(nextWidth);
-    if (next.columns === columns) return;
-    columns = next.columns;
+    const rawColumns = columnsFor(nextWidth);
+    let nextColumns = rawColumns;
+    if (nextColumns > columns && nextWidth < widthForColumns(columns + 1) + HYSTERESIS)
+      nextColumns = columns;
+    if (nextColumns < columns && nextWidth > widthForColumns(columns) - HYSTERESIS)
+      nextColumns = columns;
+    if (nextColumns === columns) return;
+    columns = nextColumns;
     width = nextWidth;
+    const next = landingLayout(width, columns);
     sizeStage(next);
     updateLayout?.({ cardWidth: next.cardWidth, compact: next.compact });
   };
-  new ResizeObserver(() => {
-    cancelAnimationFrame(resizeFrame);
-    resizeFrame = requestAnimationFrame(applyResize);
-  }).observe(stage);
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(applyResize, 180);
+  });
 
   const paintDeadline = Date.now() + 10000;
   let painted = [];

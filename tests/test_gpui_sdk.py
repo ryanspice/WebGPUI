@@ -67,6 +67,8 @@ class GpuiPublicContractTests(unittest.TestCase):
         for content in ('Native GPUI, on the web.', 'Import it', 'Endpoints', 'Requirements'):
             self.assertIn(content, demo)
         self.assertIn('stage.appendChild(canvas)', demo)
+        self.assertIn("window.addEventListener('resize'", demo)
+        self.assertIn('HYSTERESIS', demo)
         self.assertIn('getPaintedText', demo)
         self.assertNotIn("createElement('canvas')", demo)
 
