@@ -1,0 +1,39 @@
+# GPUI Web SDK — local .htaccess for /dev/gpui/ (static subdirectory of the
+# managed /dev/ SvelteKit deploy). This file scopes all rules to this feature;
+# the parent /dev/ .htaccess and the site root are unchanged.
+AddType text/javascript .mjs
+AddType application/wasm .wasm
+
+DirectoryIndex index.html
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /dev/gpui/
+  # Run before the parent /dev/ rules (which 308-strip trailing slashes and have
+  # a router.php catch-all) so the canonical directory URLs serve index.html.
+  RewriteOptions InheritDownBefore
+  # Bare directory -> index.html.
+  RewriteRule ^$ index.html [L]
+  # Any other directory -> its index.html.
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteCond %{REQUEST_FILENAME}/index.html -f
+  RewriteRule ^(.+)$ $1/index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Public SDK: credential-free CORS so other origins can import the module.
+  Header always set Access-Control-Allow-Origin "*"
+  # Only the content-hashed assets under v1/assets/ are immutable. The un-hashed
+  # entry and manifest must revalidate so a redeploy is picked up.
+  <FilesMatch "^(gpui_core_bg-[A-Za-z0-9_-]+\.wasm|[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8,}\.mjs)$">
+    Header always set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "^(gpui\.mjs|manifest\.json)$">
+    Header always set Cache-Control "no-cache"
+  </FilesMatch>
+  <FilesMatch "\.html$">
+    Header always set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+
+Options -Indexes
+ErrorDocument 404 /404.html

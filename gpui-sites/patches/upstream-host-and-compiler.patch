@@ -1,0 +1,288 @@
+diff --git a/packages/runtime/src/web-native.ts b/packages/runtime/src/web-native.ts
+index fc3db11..88f27f1 100644
+--- a/packages/runtime/src/web-native.ts
++++ b/packages/runtime/src/web-native.ts
+@@ -322,7 +322,12 @@ export class WebNativeRenderer extends MutationRenderer implements NativeRendere
+ 
+   #startEventLoop(): void {
+     const drain = (): void => {
+-      this.#drainEvents()
++      // A parse/backend failure must not terminate the event loop permanently.
++      try {
++        this.#drainEvents()
++      } catch (error) {
++        reportRuntimeError(this, error)
++      }
+       if (this.#wasm.isInitialized()) this.#eventFrame = requestAnimationFrame(drain)
+       else this.#eventFrame = undefined
+     }
+diff --git a/packages/svelte/src/compiler.ts b/packages/svelte/src/compiler.ts
+index a649186..fc23da2 100644
+--- a/packages/svelte/src/compiler.ts
++++ b/packages/svelte/src/compiler.ts
+@@ -19,6 +19,15 @@ const tags = new Set([
+   "markdown",
+   "virtual-list",
+ ])
++// Common HTML markup maps onto native GPUI primitives. Unknown tags remain a
++// compile error rather than silently rendering nothing.
++const tagAliases: Record<string, string> = {
++  span: "div", p: "div", a: "div", section: "div", article: "div", main: "div",
++  header: "div", footer: "div", nav: "div", ul: "div", ol: "div", li: "div",
++  button: "div", label: "text", strong: "text", em: "text", small: "text",
++  h1: "text", h2: "text", h3: "text", h4: "text", h5: "text", h6: "text",
++  pre: "code", b: "text", i: "text",
++}
+ const imports: Record<string, string> = {
+   svelte: "@gpui-native/svelte/public",
+   "svelte/internal/client": "@gpui-native/svelte/engine",
+@@ -80,14 +89,20 @@ export function compileNative(source: string, filename = "App.svelte"): CompileR
+       attributes?: { type: string; name: string }[]
+     }
+     if (node.type === "RegularElement") {
+-      if (!tags.has(node.name!))
+-        throw new Error(`${filename}: unsupported native element <${node.name}>`)
++      const rawName = node.name!
++      const name = tagAliases[rawName] ?? rawName
++      if (!tags.has(name))
++        throw new Error(`${filename}: unsupported native element <${rawName}>`)
+       hasNative = true
+       const start = node.start!
+-      edited.overwrite(start + 1, start + 1 + node.name!.length, `${hostName} type="${node.name}"`)
++      // A private attribute avoids colliding with a user `<input type="…">`.
++      edited.overwrite(
++        start + 1, start + 1 + rawName.length,
++        `${hostName} data-gpui-tag="${name}"`,
++      )
+       const end = node.end!
+-      const closing = source.lastIndexOf(`</${node.name}`, end - 1)
+-      if (closing >= start) edited.overwrite(closing + 2, closing + 2 + node.name!.length, hostName)
++      const closing = source.lastIndexOf(`</${rawName}`, end - 1)
++      if (closing >= start) edited.overwrite(closing + 2, closing + 2 + rawName.length, hostName)
+     }
+     if (
+       [
+@@ -125,8 +140,19 @@ export function compileNative(source: string, filename = "App.svelte"): CompileR
+   walk(ast.fragment)
+   if (hasNative) {
+     const statement = `import { Native as ${hostName} } from "@gpui-native/svelte/components";`
+-    if (ast.instance) edited.appendLeft(source.indexOf(">", ast.instance.start) + 1, statement)
+-    else edited.prepend(`<script>${statement}</script>`)
++    if (ast.instance) {
++      // Find the closing > of the opening <script> tag outside quoted attrs.
++      let quote: string | null = null
++      let openEnd = source.indexOf(">", ast.instance.start)
++      for (let i = ast.instance.start; i < source.length; i++) {
++        const ch = source[i]!
++        if (quote) {
++          if (ch === quote) quote = null
++        } else if (ch === '"' || ch === "'") quote = ch
++        else if (ch === ">") { openEnd = i; break }
++      }
++      edited.appendLeft(openEnd + 1, statement)
++    } else edited.prepend(`<script>${statement}</script>`)
+   }
+   const result = compile(edited.toString(), {
+     filename,
+diff --git a/packages/svelte/src/components.ts b/packages/svelte/src/components.ts
+index 0e677f4..0b381c9 100644
+--- a/packages/svelte/src/components.ts
++++ b/packages/svelte/src/components.ts
+@@ -193,12 +193,13 @@ const hosts = {
+ }
+ /** Compiler target for raw host tags. */
+ export const Native = ((anchor: HostNode, props: Record<string, unknown>) => {
+-  const type = props.type
++  const type = props["data-gpui-tag"] ?? props.type
+   const host = hosts[type as keyof typeof hosts]
+   if (!host) throw new Error(`Unsupported GPUI element: ${String(type)}`)
+   // Preserve compiled property getters, including bind:value setters.
+   const descriptors = Object.getOwnPropertyDescriptors(props)
+   delete descriptors.type
++  delete descriptors["data-gpui-tag"]
+   return (host as unknown as (anchor: HostNode, props: object) => ElementRef)(
+     anchor,
+     Object.defineProperties({}, descriptors),
+diff --git a/packages/svelte/src/host.ts b/packages/svelte/src/host.ts
+index 3c03ca5..131597d 100644
+--- a/packages/svelte/src/host.ts
++++ b/packages/svelte/src/host.ts
+@@ -1,4 +1,5 @@
+ import { wrapWithBatching, type BatchingRenderer } from "@gpui-native/runtime/batching"
++import { clearEventHandlers } from "@gpui-native/runtime/events"
+ import type { NativeRenderer } from "@gpui-native/runtime/native"
+ import { createNodeOps, createPatchProp, equalJsonValue } from "@gpui-native/runtime/nodeOps"
+ import { createGpuiRoot, type GpuiContainer, type GpuiNode } from "@gpui-native/runtime/nodes"
+@@ -104,8 +105,11 @@ export class HostNode extends EventTarget {
+       return node
+     }
+     const owner = this.rootController()
+-    if (owner && node.controller && node.controller !== owner)
+-      throw new Error("Cannot move Svelte nodes between GPUI roots")
++    // A node that has already been ensured carries a native id owned by its
++    // controller. Reject that move before detach; a never-ensured node has no
++    // native id and can safely be adopted by this root.
++    if (owner && node.native && node.controller !== owner)
++      throw new Error("Cannot move mounted Svelte nodes between GPUI roots; unmount first")
+     node.detach()
+     node.parentNode = this
+     node.previous = anchor ? anchor.previous : this.last
+@@ -309,8 +313,12 @@ export class HostController {
+     this.scheduled = false
+     if (this.disposed) return
+     const removed = new Set<HostNode>()
+-    for (const parent of this.structures) {
+-      this.structures.delete(parent)
++    // Drain a worklist: ensure() can add new parents to `structures` while we
++    // walk it, and those must be processed in this flush, not deferred.
++    const queue = [...this.structures]
++    this.structures.clear()
++    for (let index = 0; index < queue.length; index++) {
++      const parent = queue[index]!
+       if (parent !== this.target && parent.rootController() !== this) continue
+       const target = parent.native as GpuiContainer | null
+       if (!target) continue
+@@ -326,20 +334,26 @@ export class HostController {
+         anchor = child
+       }
+       this.committed.set(parent, children)
+-    }
+-    for (const node of removed)
+-      if (node.rootController() !== this && node.native) {
+-        this.ops.remove(node.native)
+-        const clean = (node: HostNode) => {
+-          this.nodes.delete(node)
+-          this.committed.delete(node)
+-          this.values.delete(node)
+-          node.native = null
+-          node.controller = null
+-          for (const child of node.childNodes) clean(child)
+-        }
+-        clean(node)
++      if (this.structures.size) {
++        queue.push(...this.structures)
++        this.structures.clear()
+       }
++    }
++    const clean = (node: HostNode) => {
++      const formerChildren = this.committed.get(node) ?? []
++      this.nodes.delete(node)
++      this.committed.delete(node)
++      this.values.delete(node)
++      this.structures.delete(node)
++      node.native = null
++      node.controller = null
++      for (const child of node.childNodes) clean(child)
++      for (const child of formerChildren) clean(child)
++    }
++    for (const node of removed) {
++      if (node.rootController() !== this && node.native) this.ops.remove(node.native)
++      clean(node)
++    }
+     for (const node of this.values) if (node.rootController() === this) this.update(node)
+     this.values.clear()
+     this.renderer.flushMutations()
+@@ -350,6 +364,9 @@ export class HostController {
+     this.ops.setElementText(this.root, "")
+     this.renderer.destroyElement(this.root.id)
+     this.renderer.flushMutations()
++    // destroyElement only frees native nodes; the JS handler registry is
++    // renderer-scoped and survives a direct renderer.destroy() call.
++    clearEventHandlers(this.renderer)
+     for (const node of this.nodes) {
+       node.controller = null
+       node.native = null
+diff --git a/packages/svelte/src/renderer.ts b/packages/svelte/src/renderer.ts
+index 74037d2..8fd7ae4 100644
+--- a/packages/svelte/src/renderer.ts
++++ b/packages/svelte/src/renderer.ts
+@@ -5,11 +5,20 @@ import type { Component } from "svelte"
+ import { api, proxy } from "./engine.js"
+ import { HostController } from "./host.js"
+ export const GpuiRendererKey = Symbol("gpui.svelte.renderer")
+-export function createGpuiRenderer(nativeRenderer: NativeRenderer = new MemoryNativeRenderer()) {
++export interface GpuiRendererOptions {
++  onError?: (error: unknown) => void
++}
++export function createGpuiRenderer(
++  nativeRenderer: NativeRenderer = new MemoryNativeRenderer(),
++  options: GpuiRendererOptions = {},
++) {
+   const release = claimRenderer(nativeRenderer, "Svelte root")
+   let controller: HostController
+   try {
+     controller = new HostController(nativeRenderer)
++    // Reactive flushes happen in a microtask; a throwing default handler
++    // escapes Svelte boundaries and runtime onError callbacks.
++    if (options.onError) controller.onError = options.onError
+   } catch (error) {
+     release()
+     throw error
+@@ -33,6 +42,7 @@ export function createGpuiRenderer(nativeRenderer: NativeRenderer = new MemoryNa
+     nativeRenderer,
+     renderer: controller.renderer,
+     root: controller.root,
++    set onError(handler: (error: unknown) => void) { controller.onError = handler },
+     render<Props extends Record<string, unknown>, Exports extends Record<string, unknown>>(
+       component: Component<Props, Exports> | null,
+       props: Props = {} as Props,
+diff --git a/packages/svelte/src/runtime-core.ts b/packages/svelte/src/runtime-core.ts
+index 1fe0014..68b88b6 100644
+--- a/packages/svelte/src/runtime-core.ts
++++ b/packages/svelte/src/runtime-core.ts
+@@ -1,7 +1,7 @@
+ import { clearEventHandlers } from "@gpui-native/runtime/events"
+ import { startFrameLoop } from "@gpui-native/runtime/frame-loop"
+ import type { NativeRenderer } from "@gpui-native/runtime/native"
+-import { listenForRuntimeErrors } from "@gpui-native/runtime/runtime-errors"
++import { listenForRuntimeErrors, reportRuntimeError } from "@gpui-native/runtime/runtime-errors"
+ import type { Component } from "svelte"
+ 
+ import RuntimeBoundary from "./controls/RuntimeBoundary.svelte"
+@@ -64,6 +64,9 @@ export function createGpuiRuntime(
+       keys(nextOptions.onKeyDown, nextOptions.onKeyUp)
+       if (nextOptions.debugFrameOverlay !== undefined)
+         native.setDebugFrameOverlay?.(nextOptions.debugFrameOverlay)
++      // Microtask flushes must report through the runtime error channel; a
++      // throwing default HostController.onError bypasses boundaries/onError.
++      host.onError = (error) => reportRuntimeError(native, error)
+       stopErrors()
+       const boundaryProps = {
+         component: next as unknown as Component<Record<string, unknown>>,
+@@ -86,9 +89,13 @@ export function createGpuiRuntime(
+         debugFrameOverlay,
+       } as RenderOptions<Props>)
+     } catch (error) {
+-      host.destroy()
+-      stopKeys.splice(0).forEach((stop) => stop())
+-      if (!injected) native.close?.()
++      try {
++        host.destroy()
++      } finally {
++        clearEventHandlers(native)
++        stopKeys.splice(0).forEach((stop) => stop())
++        if (!injected) native.close?.()
++      }
+       throw error
+     }
+     const loop = injected
+diff --git a/packages/svelte/test/compiler.test.ts b/packages/svelte/test/compiler.test.ts
+index 7804918..8c2e56c 100644
+--- a/packages/svelte/test/compiler.test.ts
++++ b/packages/svelte/test/compiler.test.ts
+@@ -19,12 +19,14 @@ it("uses tree templates and rejects unsupported browser features clearly", () =>
+   expect(result.js.code).not.toContain("from_html")
+   expect(result.js.code).toContain("@gpui-native/svelte/engine")
+   for (const source of [
+-    "<button>DOM</button>",
+     "<style>text{color:red}</style><text>Hello</text>",
+     "<svelte:window/>",
+     '{@html "<div/>"}',
+   ])
+     expect(() => compileNative(source)).toThrow(/GPUI|native|browser-only/)
++  // Common HTML tags alias onto native primitives instead of throwing.
++  expect(compileNative("<button>DOM</button>").js.code).toContain("'data-gpui-tag': 'div'")
++  expect(compileNative("<h1>Title</h1>").js.code).toContain("'data-gpui-tag': 'text'")
+ })
+ it("compiles TypeScript rune modules with the same isolated runtime", () => {
+   const result = compileNative(

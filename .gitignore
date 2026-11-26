@@ -1,0 +1,11 @@
+# Build workspace (isolated upstream checkout)
+.build/
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local runtime / scratch
+.ai/
+*.local.json

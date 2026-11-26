@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPUI native counter</title>
+<meta name="robots" content="noindex,follow">
+<style>
+:root{color-scheme:dark}
+html,body{margin:0;width:100%;height:100%;background:#0b0f17;color:#e2e8f0;font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+#status{position:fixed;top:16px;left:16px;z-index:1000;pointer-events:none;max-width:calc(100% - 32px);padding:8px 12px;background:#111827;border:1px solid #263244;border-radius:8px;color:#cbd5e1}
+#status.error{border-color:#f87171;color:#fecaca;white-space:pre-wrap}
+canvas{display:block}
+</style>
+</head>
+<body>
+<div id="status" role="status">Initializing genuine GPUI WASM&hellip;</div>
+<script type="module" src="./demo.mjs"></script>
+</body>
+</html>

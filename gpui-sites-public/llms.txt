@@ -1,0 +1,81 @@
+# WebGPUI v0.2.0 (Svelte-first)
+
+A versioned ES module over the real upstream GPUI Native **Svelte 5** / WebAssembly
+browser renderer, hosted at `https://ryanspice.com/dev/gpui/`. Import one URL and
+mount genuine GPU-accelerated GPUI UI in any modern browser. No npm install, no
+bundler, no Rust toolchain, no token. This is not React, not React DOM, and not an
+HTML/CSS imitation. The SDK dependency graph contains **zero React**.
+
+## P0: CDN-only JavaScript demos (no build step)
+
+```html
+<script type="module">
+  import { mount, ui } from 'https://ryanspice.com/dev/gpui/v1/gpui.mjs?v=0.2.0';
+
+  await mount({
+    initialState: { count: 0 },
+    view: (state, update) => ui.column({ style: { gap: 12, padding: 24 } }, [
+      ui.text(`Count: ${state.count}`),
+      ui.button('Increment', () => update({ count: state.count + 1 }))
+    ])
+  });
+</script>
+```
+
+## P0 API
+
+- `mount({ initialState, view, title, width, height, onError })` — initialize
+  the WASM backend and render one GPUI window. Call it once per document; a
+  second call throws until `resetRender()` is called. `view(state, update)` is
+  re-run on every `update(patch)`; `update` shallow-merges into state. `onError`
+  receives init/view/render failures. Returns the window root
+  (`{ render, close, unmount, ... }`).
+- `ui.column(props, children)`, `ui.row(props, children)`, `ui.view(props, children)`
+  — flex containers. Styles go under `props.style` (bare style props such as
+  `gap`/`padding` are also accepted); these are GPUI values, not DOM CSS.
+- `ui.text(value, props)` — a text node.
+- `ui.button(label, onPress, props)` — `onPress` fires on pointer/Enter/Space.
+- `ui.input(props)` — controlled input: `value`, `placeholder`,
+  `onChange: event => ... event.value`.
+- `initGpuiWeb()` — load the WASM module manually (await before `render`).
+- `resetRender()` — tear down the current window.
+- `version` — `'0.2.0'`.
+
+## P1: Native Svelte source demos
+
+Svelte markup needs compilation. Use `@gpui-native/svelte` (5.57.0) with the
+`gpuiSvelte()` Vite plugin to compile `.svelte` components to GPUI-targeted ES
+modules, then import the precompiled module from a standalone HTML page. See
+`docs/svelte.md` upstream. A real Svelte counter with `$state`, `bind:value` and
+`onPress` is the reference. Browser-side compilation is not a P0 dependency.
+
+## Rules
+
+- One `mount()` per standalone demo document (the SDK now enforces this).
+  Requires WebGPU or WebGL2; mount fails explicitly if neither is available.
+- Styles and events are GPUI's types, not DOM CSS or DOM events.
+- Requires WebGPU + WebAssembly. Single-threaded; no cross-origin isolation
+  (SharedArrayBuffer) headers needed. A canvas appearing alone is not proof of
+  painted content — validate interaction and resize visually.
+- If the GPU/WASM is blocked, show an explicit error. Never disguise an HTML
+  fallback as GPUI.
+
+## Endpoints
+
+- `/dev/gpui/v1/gpui.mjs` — ES module entry.
+- `/dev/gpui/v1/assets/` — hashed JS/WASM chunks (content-hashed, immutable).
+- `/dev/gpui/v1/manifest.json` — version, pinned upstream commit, exports, build metadata.
+- `/dev/gpui/v1/types.d.ts` — TypeScript types for the facade.
+- `/dev/gpui/examples/counter/` — interactive smoke test.
+- `/dev/gpui/llms.txt` — this guide.
+
+## Full demo-authoring guide
+
+For a step-by-step LLM demo-authoring guide (golden HTML template, prompt
+template, validation protocol and anti-patterns), see
+`docs/GPUI-LLM-DEMO-GUIDE.md` in the source repository. Two rules worth
+repeating here: `view()` may return one descriptor or an array, and validate
+painted text plus an interaction — a canvas appearing alone is not proof.
+
+Upstream: https://github.com/countradooku/gpui-native (see `THIRD_PARTY_NOTICES.md`
+and `LICENSES/` shipped beside the assets).
