@@ -31,10 +31,18 @@ export interface ContainerProps {
 
 export interface MountConfig {
   initialState?: Record<string, unknown>;
-  view: (state: any, update: (patch: Record<string, unknown>) => void) => GpuiChild;
+  view: (state: any, update: (patch: Record<string, unknown>) => void) => GpuiElement | GpuiElement[] | null;
   title?: string;
   width?: number;
   height?: number;
+  onError?: (error: unknown) => void;
+}
+
+export interface GpuiRenderer {
+  getPaintedText(): string[];
+  getAutomationTree(): string;
+  getWindowSize(): { width: number; height: number };
+  [key: string]: unknown;
 }
 
 export interface GpuiWindowRoot {
@@ -42,6 +50,7 @@ export interface GpuiWindowRoot {
   unmount: () => void;
   close: () => void;
   readonly closed: boolean;
+  readonly renderer: GpuiRenderer;
 }
 
 export declare const ui: {

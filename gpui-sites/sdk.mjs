@@ -10,6 +10,7 @@ export { initGpuiWeb };
 export const version = '0.3.1';
 
 let mounted = false;
+let generation = 0;
 
 // Both documented style forms are accepted: `{ style: {...} }` and bare style
 // props such as `{ gap, padding }`. Explicit `style` wins on key collisions.
@@ -68,33 +69,45 @@ export async function mount(config = {}) {
   const webgl = document.createElement('canvas').getContext('webgl2');
   if (!webgl)
     throw new Error('GPUI Web requires WebGL2; it is not available');
-  // Reserve before the first await. Without this, two concurrent mount() calls
-  // both pass the guard and share one window before either sets the flag.
+  // Reserve before the first await and tag this mount with a generation token.
+  // Without the token, a reset during init can let two mounts resolve to one
+  // root, and closing a stale root can unlock a newer one.
+  const token = ++generation;
+  const isOwner = () => token === generation;
   mounted = true;
   try {
     await initGpuiWeb();
   } catch (error) {
-    mounted = false;
+    if (isOwner()) mounted = false;
     onError?.(error);
     throw new Error('GPUI Web initialization failed: ' + (error?.message ?? String(error)));
   }
+  if (!isOwner()) throw new Error('GPUI Web mount was reset during initialization');
   try {
     const root = render(Host, {
       title, width, height,
       ...(onError ? { onError } : {}),
       props: { tree: view, initialState, ...(onError ? { onError } : {}) },
     });
+    if (!isOwner()) {
+      root.close?.();
+      throw new Error('GPUI Web mount was reset during initialization');
+    }
     const close = root.close?.bind(root);
-    if (close) root.close = () => { mounted = false; close(); };
+    if (close) root.close = () => {
+      if (isOwner()) { generation++; mounted = false; }
+      close();
+    };
     return root;
   } catch (error) {
-    mounted = false;
+    if (isOwner()) mounted = false;
     onError?.(error);
     throw error;
   }
 }
 
 export function resetRender() {
+  generation++;
   mounted = false;
   nativeResetRender();
 }

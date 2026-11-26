@@ -53,13 +53,23 @@
     const tHtml0 = performance.now();
     document.body.appendChild(replica);
     const htmlNodes = replica.querySelectorAll('*').length + 1;
+    const countEl = replica.querySelector('[data-count]');
+    let htmlClick = NaN;
+    const htmlStart = performance.now();
+    const observer = new MutationObserver(() => {
+      if (countEl.textContent === '1' && !Number.isFinite(htmlClick))
+        htmlClick = performance.now() - htmlStart;
+    });
+    observer.observe(countEl, { childList: true, characterData: true, subtree: true });
     const plus = replica.querySelector('[data-plus]');
+    plus.addEventListener('click', () => {
+      countEl.textContent = String(Number(countEl.textContent) + 1);
+    });
     plus.click();
-    const htmlClick = performance.now() - tHtml0;
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    observer.disconnect();
     replica.remove();
     add('DOM nodes for widget', '1 canvas', String(htmlNodes));
-    // No "Click → visible update" row: the HTML replica click has no state to
-    // verify, so reusing the GPUI timer for both columns would mislead.
 
     // GPUI: module load, native init, first paint, interaction latency.
     const t0 = performance.now();
@@ -104,7 +114,7 @@
     add('ES module fetch + parse', ms(tImport), 'built in');
     add('Native init (WASM + window)', ms(tInit), '0 ms');
     add('First painted content', ms(tPaint), 'synchronous with DOM insert');
-    add('Click → painted update', changed ? ms(gpuClick) : 'failed', ms(htmlClick));
+    add('Click → visible update', changed ? ms(gpuClick) : 'failed', ms(htmlClick));
 
     const resources = performance.getEntriesByType('resource');
     const mod = resources.find(r => r.name.includes('gpui.mjs'));

@@ -116,6 +116,11 @@ class GpuiPublicContractTests(unittest.TestCase):
         # The mount slot must be reserved before the first await.
         self.assertEqual(sdk.count('mounted = true;'), 1)
         self.assertLess(sdk.index('mounted = true;'), sdk.index('await initGpuiWeb()'))
+        # Ownership token prevents reset/mount races from unlocking a newer root.
+        self.assertIn('let generation = 0;', sdk)
+        self.assertIn('const token = ++generation;', sdk)
+        self.assertIn('const isOwner = () => token === generation;', sdk)
+        self.assertIn('mount was reset during initialization', sdk)
 
         host = (ROOT / 'gpui-sites' / 'Host.svelte').read_text(encoding='utf-8')
         self.assertIn('$derived.by', host)

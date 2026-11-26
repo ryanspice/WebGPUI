@@ -31,9 +31,9 @@ renderer — not React DOM, canvas mockups, or HTML/CSS.
 ## Build
 
 ```powershell
-pwsh -NoProfile -File .\Build-GpuiSites.ps1
+pwsh -NoProfile -File .\Build-WebGPUI.ps1
 # Reproduce a specific upstream revision:
-pwsh -NoProfile -File .\Build-GpuiSites.ps1 -Ref <commit>
+pwsh -NoProfile -File .\Build-WebGPUI.ps1 -Ref <commit>
 ```
 
 The script clones upstream into an isolated `.build/` workspace, builds the
@@ -46,7 +46,7 @@ browser WASM + adapters, bundles the SDK, copies the public overlay into
 
 ```powershell
 python -m http.server 8080 --directory <path-to>\dist-sites
-# open http://localhost:8080/  and  http://localhost:8080/examples/counter/
+# open http://localhost:8080/gpui/  and  http://localhost:8080/gpui/examples/counter/
 ```
 
 Confirm: the counter paints in a real GPUI canvas; `+`, `−`, `Reset`, the text
@@ -73,6 +73,10 @@ SvelteKit deploy; this SDK is a static subdirectory alongside it). The
   for the unhashed entry `v1/gpui.mjs` — give it a short/no-cache rule so a
   long-cached entry cannot pin a stale build against fresh hashed chunks.
 - Missing assets return `404` (no SPA fallback).
+- **Retain previously published hashed assets across swaps.** A tab that
+  imported an older `gpui.mjs` may mount later and still request its original
+  `gpui_core_bg-<hash>.wasm`; deleting old hashes breaks that deferred mount.
+  Copy prior `v1/assets/` files into the new tree before removing the old one.
 
 The root `deploy_verified.py` `.htaccess` also carries matching CORS/wasm rules
 for the portfolio root, but the `/dev/gpui/` deploy uses its own local

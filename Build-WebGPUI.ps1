@@ -54,11 +54,10 @@ try {
   # git apply fails loudly if the pinned revision changes, rather than shipping
   # a silently unpatched build.
   $patch = Join-Path $PSScriptRoot 'gpui-sites/patches/upstream-host-and-compiler.patch'
-  if (Test-Path -LiteralPath $patch) {
-    Write-Host '[GPUI] Apply upstream adapter fixes' -ForegroundColor Cyan
-    Run git @('apply','--check',$patch)
-    Run git @('apply',$patch)
-  }
+  if (-not (Test-Path -LiteralPath $patch)) { throw "Missing mandatory upstream patch: $patch" }
+  Write-Host '[GPUI] Apply upstream adapter fixes' -ForegroundColor Cyan
+  Run git @('apply','--check',$patch)
+  Run git @('apply',$patch)
   Run bun @('install','--frozen-lockfile')
   Write-Host '[GPUI] Build upstream WASM and adapters' -ForegroundColor Cyan
   Run bun @('run','build:pages')
@@ -90,6 +89,18 @@ try {
       Copy-Item $source $dist -Recurse -Force
       Copy-Item $source (Join-Path $dist 'gpui') -Recurse -Force
     }
+  }
+  # Bundled dependencies need their own notices. Fail loudly if upstream
+  # layout changes so we never publish an incomplete attribution set.
+  $dependencyNotices = @(
+    @{ Source = 'packages/svelte/node_modules/svelte/LICENSE.md'; Name = 'LICENSE-SVELTE.md' },
+    @{ Source = 'vendor/gpui-kit/crates/assets/LICENSE-LUCIDE'; Name = 'LICENSE-LUCIDE' }
+  )
+  foreach ($notice in $dependencyNotices) {
+    $source = Join-Path $repo $notice.Source
+    if (-not (Test-Path $source)) { throw "Missing required dependency notice: $($notice.Source)" }
+    Copy-Item $source (Join-Path (Join-Path $dist 'gpui') $notice.Name) -Force
+    Copy-Item $source (Join-Path $dist $notice.Name) -Force
   }
   Write-Host "[GPUI] Static deployment root: $dist" -ForegroundColor Green
   Write-Host '[GPUI] Serve over HTTPS (or localhost); test the native counter and CORS before publishing.'
